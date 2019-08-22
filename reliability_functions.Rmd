@@ -1,0 +1,150 @@
+---
+title: "Reliability functions"
+author: "Sebastiaan de Klerk"
+date: "22-8-2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "C:/Users/s.dklerk/OneDrive - eX plain/eXplain/Innovatie & Onderzoek/Projectleiding/R projecten/Reliability/reliability_analysis")
+```
+
+```{r}
+Lopez <- function(item_correlation_matrix, number_of_items) {
+  
+  # Lopez : Correction on Cronbach's alpha based on inter item correlations
+  #
+  # input : item.correlation.matrix : matrix with all item correlations
+  #         number.of.items         : number of items used
+  
+  inter_item_cor <- item_correlation_matrix[lower.tri(item_correlation_matrix)]
+  
+  mean_inter_item_cor <- mean(inter_item_cor, na.rm = T)
+  
+  Lopez_alpha <- ( number_of_items * mean_inter_item_cor ) / ( 1+(number_of_items - 1)*mean_inter_item_cor )
+  
+  return(Lopez_alpha)
+}
+```
+
+```{r}
+sdTest <- function(binary_response_matrix) {
+  
+  # sdTest : Standard deviation of total test.
+  #          Calculated using point biserial correlation.
+  #
+  # input: binary.response.matrix : Binary responses to all items.
+  
+  proportions_correct <- apply(binary_response_matrix, 2, mean, na.rm = T) # Proportion correct per item
+  sum_scores          <- apply(binary_response_matrix, 1, sum,  na.rm = T) # Total sum score per user
+  
+  # Create emty vector to store item total correlations
+  r_it = vector()
+  
+  # Determine number of items in response matrix
+  number_of_items = dim(binary_response_matrix)[2]
+  
+  # Calculate point biserial correlation per item with total sum score
+  for(i in 1:number_of_items) { 
+    
+    r_it[i] =  biserial.cor(sum_scores, binary_response_matrix[,i], level=1, use = "complete.obs") 
+    
+  }
+  
+  # Calculate standard deviation of the test
+  SD_test <- sum(r_it*sqrt(proportions_correct*(1 - proportions_correct)), na.rm = T)
+  
+  return(SD_test)  
+}
+```
+
+```{r}
+kr20 <- function(n, sd.test, probability_vector) {
+  
+  # kr20: reliability estimate
+  #
+  # input: n                  : total items in item bank
+  #        sd.test            : standard deviation of the test
+  #        probability_vector : vector with proportions correct per item
+  
+  kr20 = (n/(n-1)) * ( 1 - ( sum(probability_vector*(1-probability_vector)) / sd.test^2 ) )
+  
+  return(kr20)
+}
+```
+
+```{r}
+SpearmanBrownPredictionFormula <- function(k, cronbach_alpha) {
+  
+  # SpearmanBrownPredictionFormula : Mean reliability on extended or shortened test
+  #
+  # input : k              : factor for the relative increase or decrease of number of items
+  #                          in percentages
+  #         cronbach.alpha : Pre determined reliability
+  
+  mean_scaled_alpha <- ( k * cronbach_alpha ) / ( 1 + (k - 1) * cronbach_alpha )
+  
+  return(mean_scaled_alpha)  
+}
+```
+
+```{r}
+Rit <- function(binary_response_matrix) {
+  
+  # Rit:          Rit values for all items in item bank
+  #
+  # input:        binary_response_matrix: Binary responses to all items
+  
+  sum_scores  <- apply(binary_response_matrix, 1, sum,  na.rm = T) # Total sum score per test taker
+  
+  # Create empty vector to store item total correlations
+  r_it <- vector()
+  
+  # Determine number of items in response matrix
+  number_of_items <- dim(binary_response_matrix)[2]
+  
+  # Calculate point biserial correlation per item with total sum score
+  for(i in 1:number_of_items) { 
+    
+    r_it[i] <-  biserial.cor(sum_scores, binary_response_matrix[,i], level=2, use = "complete.obs")  
+   
+  }
+  return(r_it)
+}
+```
+
+```{r}
+reliabilityPat <- function(binary_response_matrix){
+  
+  # reliabilityPat  : Reliability as calculated in PAT
+  #
+  # input           : binary_response_matrix     : response matrix with binaries
+  
+  #calculate number of items in a test 
+  n           <- length(binary_response_matrix[1,][!is.na(binary_response_matrix[1,])])
+  
+  #calculate sum score per test taker
+  sum_scores  <- apply(binary_response_matrix, 1, sum,  na.rm = T) # Total sum score per test taker
+  
+  #create empty vector to store rit values
+  r_it <- vector()
+  
+  #store rit values in empty vector
+  for(i in 1:number_of_items) { 
+    
+  r_it[i] <-  biserial.cor(sum_scores, data_hw[,i], level=2, use = "complete.obs")  
+   
+  }
+  
+  #calculate mean rit value
+  mean_rit <- round(mean(r_it, na.rm = T), 2)
+  
+  #calculate reliability as in PAT
+  reliability_pat <- round(n/(n-1)*(1-(1/(n*((mean_rit)^2)))), 2)
+  
+  #return reliability as in PAT
+  return(list("The number of items in a test is:", n, "The mean Rit is:", mean_rit, "The reliability is:", reliability_pat))
+}
+```
+
